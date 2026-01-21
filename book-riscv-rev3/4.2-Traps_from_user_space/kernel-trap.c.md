@@ -25,7 +25,7 @@ usertrap(void)
   
   if(r_scause() == 8){
     // system call
-
+    // プロセスがkillされていたらkexit(-1)で終了
     if(killed(p))
       kexit(-1);
 
@@ -49,10 +49,12 @@ usertrap(void)
     setkilled(p);
   }
 
+  // プロセスがkillされていたらkexit(-1)で終了
   if(killed(p))
     kexit(-1);
 
   // give up the CPU if this is a timer interrupt.
+  // タイマー割り込みだった場合はyield()でCPUを他のプロセスに譲る
   if(which_dev == 2)
     yield();
 
@@ -63,6 +65,19 @@ usertrap(void)
 
   // return to trampoline.S; satp value in a0.
   return satp;
+}
+
+
+// kernel/proc.c
+// Give up the CPU for one scheduling round.
+void
+yield(void)
+{
+  struct proc *p = myproc();
+  acquire(&p->lock);
+  p->state = RUNNABLE;
+  sched();
+  release(&p->lock);
 }
 
 ```
